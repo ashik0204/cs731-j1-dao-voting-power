@@ -1,0 +1,28 @@
+# J1 configuration. All analysis reads its parameters from here.
+dao: compound
+
+# RPC: the URL is read from this environment variable (never committed).
+# If unset, data/rpc.py falls back to free public archive endpoints.
+rpc_env_var: RPC_URL
+
+contracts:
+  # GovernorBravo proxy (events are emitted by the proxy address)
+  governor: "0xc0Da02939E1441F497fd74F78cE7Decb17B66529"
+  token: "0xc00e94Cb662C3520282E6f5717214004A7f26888"   # COMP
+
+blocks:
+  token_deploy: 9601359      # COMP token creation; Transfer/delegation replay starts here
+  governor_deploy: 12006099  # GovernorBravo proxy creation
+  end: 22000000              # fixed end of the window (after Bravo's last proposal, id 393)
+
+governance:
+  # GovernorBravoDelegate.quorumVotes() = 400,000 COMP (checked on-chain by data/fetch.py)
+  quorum_votes: 400000
+  decimals: 18
+
+power:
+  # Integer resolution of the weighted voting game: weights are rounded to units of
+  # (total weight / resolution). Players that round to 0 are dummies (index 0).
+  resolution: 20000
+  sensitivity_resolutions: [5000, 20000, 50000]
+  top_k: [1, 3, 5, 10]
