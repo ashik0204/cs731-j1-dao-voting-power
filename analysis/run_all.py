@@ -17,6 +17,7 @@ import yaml
 from analysis.compute_indices import compute
 from power.gap import spearman, game_indices
 from power.pivotal import min_flip_set, set_flips, passed
+from analysis.beyond import participation_games, nakamoto, voters_to_half
 
 CONFIG = yaml.safe_load(open("config.yaml"))
 RES = Path("results")
@@ -223,6 +224,60 @@ def resolution_sensitivity(props):
     SUMMARY["resolution_sensitivity_max_diff_shapley"] = float(main.max_abs_diff_shapley_vs_max_res.max())
 
 
+# ---------------------------------------------------------------- beyond
+def beyond_analysis(props, per):
+    votes = pd.read_csv(PROC / "votes.csv")
+    games, ind = participation_games(props, votes, Q, CONFIG["power"]["resolution"])
+    games = games.merge(per[["proposal_id", "top1_shapley", "top1_banzhaf"]].rename(
+        columns={"top1_shapley": "top1_shapley_all", "top1_banzhaf": "top1_banzhaf_all"}), on="proposal_id")
+    games.to_csv(RES / "participation_games.csv", index=False)
+    ind.to_csv(RES / "participation_indices.csv.gz", index=False)
+    ok = games[~games.no_winning_coalition]
+    SUMMARY.update({
+        "part_games": len(games), "part_no_winning": int(games.no_winning_coalition.sum()),
+        "part_quorum_binds": int(games.quorum_binds.sum()),
+        "part_voters_median": float(games.n_voters.median()),
+        "part_top1_share_median": float(ok.top1_share.median()),
+        "part_top1_banzhaf_median": float(ok.top1_banzhaf.median()),
+        "part_top1_shapley_median": float(ok.top1_shapley.median()),
+        "part_nakamoto_shapley_median": float(ok.nakamoto_shapley.median()),
+        "part_top1_shapley_gt_all_share": float((ok.top1_shapley > ok.top1_shapley_all).mean()),
+    })
+
+    # Prior work on our data. Fritsch et al. measure at block 14,300,000; we use
+    # the latest of our snapshots at or before that block.
+    w = pd.read_csv(PROC / "weights.csv.gz")
+    snaps = props[props.snapshot_block <= 14_300_000].sort_values("snapshot_block")
+    pid = int(snaps.proposal_id.iloc[-1])
+    wf = w[(w.proposal_id == pid) & (w.weight > 0)]
+    v2h = voters_to_half(votes)
+    v2h = v2h[v2h.index.isin(props[props.outcome != "canceled"].proposal_id)]
+    prior = pd.DataFrame([
+        {"source": "Fritsch et al. 2204.01176", "metric": "Nakamoto coefficient (delegates)",
+         "their_value": "8 (Compound, block 14,300,000)",
+         "our_value": nakamoto(wf.weight), "our_scope": f"snapshot block {int(snaps.snapshot_block.iloc[-1])} (proposal {pid})"},
+        {"source": "Messias et al. 2305.17655", "metric": "mean voters needed for >= 50% of votes cast",
+         "their_value": "3.18 (Compound, to Aug 2024)",
+         "our_value": round(float(v2h.mean()), 2), "our_scope": f"{len(v2h)} decided Bravo proposals"},
+    ])
+    prior.to_csv(RES / "prior_work_comparison.csv", index=False)
+    SUMMARY.update({"fritsch_block_pid": pid, "fritsch_snapshot_block": int(snaps.snapshot_block.iloc[-1]),
+                    "nakamoto_at_fritsch_block": nakamoto(wf.weight),
+                    "voters_to_half_mean": float(v2h.mean()), "voters_to_half_median": float(v2h.median()),
+                    "voters_to_half_n": len(v2h)})
+
+    fig, ax = plt.subplots(figsize=(9, 4.2))
+    ax.plot(games.proposal_id, games.top1_shapley_all, color=INK2, lw=1.5,
+            label="All delegates (main game)")
+    ax.plot(ok.proposal_id, ok.top1_shapley, color=ORANGE, lw=1.2, marker="o", ms=3,
+            label="Only those who voted (participation game)")
+    ax.set(xlabel="Proposal id", ylabel="Shapley-Shubik of largest player", ylim=(0, 1),
+           title="Largest player's power: everyone vs actual voters")
+    ax.legend(loc="upper left")
+    save(fig, "fig_participation_power.png")
+    return games
+
+
 # ---------------------------------------------------------------- figures
 def figures(per, agg, piv, props):
     x = per.proposal_id
@@ -331,7 +386,14 @@ def write_tex_macros():
         "TransMoved": pct(S["transitive_max_weight_moved_share"]),
         "DummyMax": pct(S["dummy_weight_share_max"]),
         "TopOneExceeds": pct(min(S["top1_banzhaf_exceeds_share_share"], S["top1_shapley_exceeds_share_share"])),
-        "DelegMismatch": S["delegate_weight_mismatches"], "VoteMismatch": S["vote_weight_mismatches"],
+        "DelegMismatch": S["delegate_weight_mismatches"],
+        "PartGames": S["part_games"], "PartNoWin": S["part_no_winning"], "PartQuorumBinds": S["part_quorum_binds"],
+        "PartVoters": f"{S['part_voters_median']:.0f}",
+        "PartTopOneShare": pct(S["part_top1_share_median"]), "PartTopOneBz": pct(S["part_top1_banzhaf_median"]),
+        "PartTopOneSS": pct(S["part_top1_shapley_median"]), "PartNakSS": f"{S['part_nakamoto_shapley_median']:.0f}",
+        "PartTopOneGreater": pct(S["part_top1_shapley_gt_all_share"]),
+        "NakFritsch": S["nakamoto_at_fritsch_block"], "FritschBlock": f"{S['fritsch_snapshot_block']:,}",
+        "VotersHalf": f"{S['voters_to_half_mean']:.2f}", "VotersHalfN": S["voters_to_half_n"], "VoteMismatch": S["vote_weight_mismatches"],
     }
     piv = pd.read_csv(RES / "pivotal_per_proposal.csv")
     d = piv[piv.analysed & (piv.outcome == "defeated")]
@@ -350,6 +412,7 @@ def main():
     piv = pivotal_analysis(props)
     resolution_sensitivity(props)
     figures(per, agg, piv, props)
+    beyond_analysis(props, per)
     write_tex_macros()
     (RES / "summary.json").write_text(json.dumps(SUMMARY, indent=2, default=float))
     print(json.dumps(SUMMARY, indent=2, default=float))

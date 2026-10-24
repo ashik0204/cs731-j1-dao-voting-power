@@ -2,6 +2,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{amsmath,amssymb}
 \graphicspath{{../results/}}
 \input{../results/numbers.tex}
@@ -165,7 +166,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Tests (276, all passing)}
+\begin{frame}{Tests (278, all passing)}
   \begin{columns}[T]
   \begin{column}{0.5\textwidth}
   \textbf{Indices}
@@ -197,7 +198,7 @@
 \section{Results}
 \begin{frame}{A few delegates hold most of the weight}
   \begin{columns}[c]
-  \begin{column}{0.36\textwidth}
+  \begin{column}{0.35\textwidth}
     Median over \NProposals{} proposals:\\[0.6em]
     \begin{tabular}{lr}
       \toprule
@@ -209,7 +210,7 @@
     Top 5: \TopFiveShare{} of weight, \TopFiveBz{} / \TopFiveSS{} of power.\\[0.5em]
     Of \NPlayers{} players, only $\sim$\NLive{} are not dummies.
   \end{column}
-  \begin{column}{0.62\textwidth}
+  \begin{column}{0.6\textwidth}
     \includegraphics[width=\textwidth]{fig_top1_power.png}
   \end{column}
   \end{columns}
@@ -288,10 +289,49 @@
   \end{columns}
 \end{frame}
 
+
+\begin{frame}{Beyond the base game: power among those who actually vote}
+  \begin{columns}[c]
+  \begin{column}{0.36\textwidth}
+    \small
+    Players = the \textbf{for/against voters} only; same quota rule on votes cast.
+    \begin{itemize}
+      \item Quorum (400k COMP) now binds in \PartQuorumBinds{} of \PartGames{} decided proposals.
+      \item In \PartNoWin, the voters could not reach quorum at all.
+      \item Median: \PartVoters{} voters; the largest holds \PartTopOneShare{} of cast votes but \PartTopOneSS{} Shapley--Shubik power.
+      \item Nakamoto (Shapley--Shubik) drops from \NakSS{} to \PartNakSS.
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.62\textwidth}
+    \includegraphics[width=\textwidth]{fig_participation_power.png}
+  \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}{Agreement with prior work}
+  We recomputed the published Compound metrics on our own data.
+  \vspace{0.8em}
+  \begin{center}
+  \small
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}cc}
+    \toprule
+    Source & Metric & Published & Ours\\ \midrule
+    Fritsch, M\"uller \& Wattenhofer (2022) & Nakamoto coefficient of delegates, block 14.3M & 8 & \textbf{\NakFritsch}\\[0.4em]
+    Messias et al.\ (2023) & mean voters needed for $\ge$50\% of votes cast & 3.18 & \textbf{\VotersHalf}\\ \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{0.6em}
+  \begin{itemize}
+    \item Ours: snapshot block \FritschBlock{}; \VotersHalfN{} decided Bravo proposals. Messias et al.\ also include Governor Alpha and data to Aug 2024.
+    \item \textbf{What we add:} neither paper computes Banzhaf or Shapley--Shubik indices. Fritsch et al.\ use ``could one delegate flip this vote''; we compute both indices exactly over the delegation-resolved game, for every proposal.
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Takeaways}
   \begin{enumerate}
     \item \textbf{Concentration is real, and slightly worse than token share suggests.} The top delegate's power exceeds its share under both indices in \TopOneExceeds{} of proposals; the median Nakamoto coefficient falls from \NakShare{} (weight) to \NakSS{} (Shapley--Shubik).
     \item \textbf{The two indices agree on who matters} (by theorem) and differ by only $\sim$\TVBzSS{} in total variation, but Banzhaf amplifies the top delegate more.
+    \item \textbf{Among actual voters it is starker:} quorum binds in \PartQuorumBinds{} of \PartGames{} proposals and \PartNakSS{} voters hold most of the power.
     \item \textbf{Realised outcomes are fragile.} The top 5 delegates could have reversed \TopkFive{} of all decided proposals; a single address, \FlipOne{} of \NDecided.
   \end{enumerate}
 \end{frame}
@@ -313,15 +353,15 @@
 \section{Future directions}
 \begin{frame}{Future directions}
   \begin{itemize}
-    \item \textbf{Turnout-aware games:} restrict players to likely voters, or weight by historical participation.
+    \item \textbf{Turnout models:} between our two games, weight players by their historical participation.
     \item \textbf{Entity clustering:} merge addresses controlled by the same organisation.
     \item \textbf{Second DAO:} Uniswap uses the same token/governor design, so the pipeline transfers with a config change.
     \item \textbf{Off-chain voting} (Snapshot) and liquid-delegation designs where chains really are transitive.
     \item \textbf{Mechanism design:} how quorum or vote caps would change the indices.
   \end{itemize}
   \vspace{1em}
-  \muted{\small References: Fritsch, M\"uller \& Wattenhofer, \emph{Analyzing Voting Power in Decentralized Governance}, arXiv:2208.01636.\\
-  Messias et al., \emph{Understanding Blockchain Governance}, arXiv:2304.02625.}
+  \muted{\small References: Fritsch, M\"uller \& Wattenhofer, \emph{Analyzing Voting Power in Decentralized Governance: Who controls DAOs?}, arXiv:2204.01176.\\
+  Messias et al., \emph{Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts}, arXiv:2305.17655.}
 \end{frame}
 
 \begin{frame}

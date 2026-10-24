@@ -55,3 +55,21 @@ def test_game_indices_sum_and_dummies():
     assert df.banzhaf.sum() == pytest.approx(1) and df.shapley.sum() == pytest.approx(1)
     assert df.loc["a", "shapley"] == pytest.approx(2 / 3)
     assert np.isclose(df.share.sum(), 1)
+
+
+def test_nakamoto_and_voters_to_half():
+    import pandas as pd
+    from analysis.beyond import nakamoto, voters_to_half
+    assert nakamoto([50, 30, 20]) == 2          # 50 is not > 50% of 100
+    assert nakamoto([51, 30, 19]) == 1
+    v = pd.DataFrame({"proposal_id": [1, 1, 1, 2, 2], "votes": [50.0, 30, 20, 10, 10]})
+    assert voters_to_half(v).to_dict() == {1: 1, 2: 1}   # >= 50% of votes cast
+
+
+def test_participation_game_quorum_unreachable():
+    import pandas as pd
+    from analysis.beyond import participation_games
+    props = pd.DataFrame({"proposal_id": [7], "outcome": ["defeated"]})
+    votes = pd.DataFrame({"proposal_id": [7, 7], "voter": ["a", "b"], "support": [1, 0], "votes": [100.0, 50.0]})
+    g, ind = participation_games(props, votes, quorum=400.0, resolution=1000)
+    assert bool(g.no_winning_coalition.iloc[0]) and ind.banzhaf.sum() == 0
