@@ -1,0 +1,3 @@
+source,metric,their_value,our_value,our_scope
+Fritsch et al. 2204.01176,Nakamoto coefficient (delegates),"8 (Compound, block 14,300,000)",8.0,snapshot block 14252261 (proposal 85)
+Messias et al. 2305.17655,mean voters needed for >= 50% of votes cast,"3.18 (Compound, to Aug 2024)",3.55,314 decided Bravo proposals

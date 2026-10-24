@@ -82,7 +82,7 @@ All tests run with one command and must pass before any result is reported.
 5. Limitations: snapshot choices, delegation cycles, missing data, model assumption that voters are not strategic.
 6. Future directions.
 
-Reference reading: Fritsch, Müller and Wattenhofer, "Analyzing Voting Power in Decentralized Governance" (arXiv 2208.01636). Also Messias et al., "Understanding Blockchain Governance" (arXiv 2304.02625).
+Reference reading: Fritsch, Müller and Wattenhofer, "Analyzing Voting Power in Decentralized Governance: Who controls DAOs?" (arXiv [2204.01176](https://arxiv.org/abs/2204.01176)). Also Messias et al., "Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts" (arXiv [2305.17655](https://arxiv.org/abs/2305.17655)). *(The brief originally gave arXiv 2208.01636 and 2304.02625. Those IDs are unrelated papers, a privacy workshop report and an AI-writing-assistant study, so they are corrected here.)*
 
 ## 8. Repo layout
 
@@ -119,7 +119,7 @@ Python 3.13. From a clean checkout:
 ```
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -r requirements.txt
-pytest                              # 276 tests, ~2 s; must pass before results are reported
+pytest                              # 278 tests, ~2 s; must pass before results are reported
 
 # optional: your own archive node. If unset, public archive endpoints are used.
 export RPC_URL=...                  # never committed
@@ -159,3 +159,16 @@ Each change below was made for the stated reason. Nothing else in sections 1–9
 - **Robustness:** integer resolution (max index change 0.00016 from 20000 to 50000) and transitive delegation (at most 5.3% of weight moves).
 
 **Limitations:** single snapshot rule; one-hop delegation, as in the protocol; voters modelled as non-strategic and all-voting in the index game; abstention not modelled in the indices; addresses are not mapped to real-world entities (one entity may control several addresses, which would understate concentration).
+
+## 13. Beyond the base analysis (`analysis/beyond.py`)
+
+**Participation game.** The main game (section 11.5) treats every delegate as a voter, so quorum never binds. As an extension we also compute both indices in each decided proposal's *participation game*: players are the for/against voters, weights their cast votes, and the same quota rule. Here the 400k COMP quorum binds in 259 of 314 proposals, and in 23 the voters could not reach quorum at all (no winning coalition, all indices 0). Among actual voters (median 21), the largest holds a median 17.6% of cast votes and 18.3% Shapley-Shubik power. The Shapley-Shubik Nakamoto coefficient falls from 9 to 4. Up to about proposal 220 the largest voter often held 40–80% of Shapley-Shubik power, because reaching quorum depended on it (`fig_participation_power.png`, `participation_games.csv`).
+
+**Prior work recomputed on our data** (`results/prior_work_comparison.csv`):
+
+| Source | Metric | Published (Compound) | Ours |
+|---|---|---|---|
+| Fritsch et al. (arXiv 2204.01176) | Nakamoto coefficient of delegates at block 14,300,000 | 8 | 8 (snapshot block 14,252,261) |
+| Messias et al. (arXiv 2305.17655) | mean voters needed for ≥ 50% of votes cast | 3.18 | 3.55 (314 decided Bravo proposals) |
+
+Messias et al. also cover Governor Alpha and data to August 2024, and they report that almost all defeated Compound proposals failed on quorum, consistent with our flip-set result. Neither paper computes Banzhaf or Shapley-Shubik indices. Fritsch et al. use their own "potential/exercised power" (could a delegate's vote alone flip the result) and Gini/Nakamoto coefficients, and Messias et al. measure concentration and voting costs. Computing both indices exactly over the delegation-resolved game for every proposal is what this project adds.

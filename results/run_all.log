@@ -65,5 +65,20 @@
   },
   "turnout_share_median": 0.2550370664258967,
   "resolution_sensitivity_max_diff_banzhaf": 0.0001487402366241175,
-  "resolution_sensitivity_max_diff_shapley": 0.00016397614651808556
+  "resolution_sensitivity_max_diff_shapley": 0.00016397614651808556,
+  "part_games": 314,
+  "part_no_winning": 23,
+  "part_quorum_binds": 259,
+  "part_voters_median": 21.0,
+  "part_top1_share_median": 0.17595010130893454,
+  "part_top1_banzhaf_median": 0.15770609318996415,
+  "part_top1_shapley_median": 0.18253968253968253,
+  "part_nakamoto_shapley_median": 4.0,
+  "part_top1_shapley_gt_all_share": 0.6323024054982818,
+  "fritsch_block_pid": 85,
+  "fritsch_snapshot_block": 14252261,
+  "nakamoto_at_fritsch_block": 8,
+  "voters_to_half_mean": 3.550955414012739,
+  "voters_to_half_median": 4.0,
+  "voters_to_half_n": 314
 }
