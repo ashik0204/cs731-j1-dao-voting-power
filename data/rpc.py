@@ -77,11 +77,15 @@ def _compact(log):
             "tx": log["transactionHash"], "topics": log["topics"], "data": log["data"]}
 
 
-def endpoints():
-    """RPC endpoints: $RPC_URL first (if set), then the public fallbacks."""
+def endpoints(env_var="RPC_URL"):
+    """RPC endpoints: the URL in $<env_var> first (if set), then the public fallbacks.
+
+    The fallbacks are free public archive endpoints, not keys, so the pipeline
+    runs from a clean checkout without an account.
+    """
     urls = []
-    if os.environ.get("RPC_URL"):
-        urls.append(os.environ["RPC_URL"])
+    if os.environ.get(env_var):
+        urls.append(os.environ[env_var])
     urls += ["https://gateway.tenderly.co/public/mainnet", "https://rpc.mevblocker.io"]
     return urls
 
@@ -123,3 +127,14 @@ def cached_call(rpc, name, to, data, block):
         cache[key] = rpc.call("eth_call", [{"to": to, "data": data}, hex(block)])
         path.write_text(json.dumps(cache))
     return cache[key]
+
+
+def cached_block_times(rpc, blocks):
+    """UTC timestamps of the given blocks, cached in data/raw/block_times.json."""
+    path = RAW / "block_times.json"
+    cache = json.loads(path.read_text()) if path.exists() else {}
+    for b in sorted(set(int(x) for x in blocks)):
+        if str(b) not in cache:
+            cache[str(b)] = int(rpc.call("eth_getBlockByNumber", [hex(b), False])["timestamp"], 16)
+    path.write_text(json.dumps(cache, sort_keys=True))
+    return {int(k): v for k, v in cache.items()}

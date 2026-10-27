@@ -1,0 +1,17 @@
+{
+  "raw_mb": 174.4,
+  "events": {
+    "ProposalCreated": 351,
+    "VoteCast": 14396,
+    "ProposalCanceled": 38,
+    "ProposalQueued": 286,
+    "ProposalExecuted": 281,
+    "DelegateChanged": 16038,
+    "DelegateVotesChanged": 85859,
+    "Transfer": 2326755
+  },
+  "reference_dates": {
+    "fritsch_cutoff": "2022-03-01"
+  },
+  "end_block_date": "2025-03-08"
+}

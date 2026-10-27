@@ -3,7 +3,7 @@
     python -m data.process
 
 Writes data/processed/:
-  proposals.csv    id, proposer, start/end block, snapshot block, outcome, vote totals
+  proposals.csv    id, proposer, start/end block and UTC date, snapshot block, outcome, vote totals
   votes.csv        proposal_id, voter, support (0 against, 1 for, 2 abstain), votes
   delegations.csv  every DelegateChanged event (delegator, from, to)
   balances.csv     per proposal snapshot: every delegating address with its
@@ -11,6 +11,8 @@ Writes data/processed/:
   weights.csv      per proposal snapshot: our delegate voting weights, next to the
                    on-chain checkpoint value (DelegateVotesChanged) for checking
   validation.csv   per proposal: agreement of our weights with the chain
+  counts.json      size of the raw download and number of events of each type
+Every column is described in data/processed/COLUMNS.md.
 """
 import bisect
 import json
@@ -109,7 +111,16 @@ def main():
         {"for": 0, "against": 0, "abstain": 0})
     props["n_voters"] = props.proposal_id.map(votes.groupby("proposal_id").size()).fillna(0).astype(int)
     props["outcome"] = props.apply(outcome, axis=1, quorum=CONFIG["governance"]["quorum_votes"])
+    times = {int(k): v for k, v in json.loads((RAW / "block_times.json").read_text()).items()}
+    utc_date = lambda blk: pd.Timestamp(times[blk], unit="s").strftime("%Y-%m-%d")
+    props.insert(props.columns.get_loc("start_block") + 1, "start_date", props.start_block.map(utc_date))
+    props.insert(props.columns.get_loc("end_block") + 1, "end_date", props.end_block.map(utc_date))
     props.to_csv(OUT / "proposals.csv", index=False)
+    counts = {"raw_mb": round(sum(f.stat().st_size for f in RAW.rglob("*") if f.is_file()) / 2**20, 1),
+              "events": {k: len(v) for k, v in logs.items()},
+              "reference_dates": {name: utc_date(blk) for name, blk in CONFIG["reference_blocks"].items()},
+              "end_block_date": utc_date(CONFIG["blocks"]["end"])}
+    (OUT / "counts.json").write_text(json.dumps(counts, indent=2))
 
     transfers = [(l["block"], l["logIndex"], addr_topic(l["topics"][1]), addr_topic(l["topics"][2]),
                   int(l["data"], 16)) for l in logs["Transfer"]]
@@ -139,10 +150,10 @@ def main():
         onchain = {d: onchain_votes(d, snap) for d in checkpoints}
         onchain = {d: v for d, v in onchain.items() if v > 0}
         for pid in snap_to_ids[snap]:
-            for a, d in dels.items():
+            for a, d in sorted(dels.items()):
                 if bal.get(a, 0) > 0:
                     bal_rows.append((pid, snap, a, bal[a] / DEC, d))
-            for d in set(weights) | set(onchain) | set(weights_tr):
+            for d in sorted(set(weights) | set(onchain) | set(weights_tr)):
                 w_rows.append((pid, snap, d, weights.get(d, 0) / DEC, weights_tr.get(d, 0) / DEC,
                                onchain.get(d, 0) / DEC))
             diffs = [abs(weights.get(d, 0) - onchain.get(d, 0)) for d in set(weights) | set(onchain)]
