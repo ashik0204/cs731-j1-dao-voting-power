@@ -15,6 +15,10 @@ blocks:
   governor_deploy: 12006099  # GovernorBravo proxy creation
   end: 22000000              # fixed end of the window (after Bravo's last proposal, id 393)
 
+# Blocks we report a calendar date for (block timestamps are fetched and cached).
+reference_blocks:
+  fritsch_cutoff: 14300000   # end of Fritsch, Mueller & Wattenhofer's data window
+
 governance:
   # GovernorBravoDelegate.quorumVotes() = 400,000 COMP (checked on-chain by data/fetch.py)
   quorum_votes: 400000

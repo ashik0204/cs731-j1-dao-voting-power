@@ -53,6 +53,12 @@ def short(a):
 # ---------------------------------------------------------------- data checks
 def data_summary(props):
     val = pd.read_csv(PROC / "validation.csv")
+    counts = json.loads((PROC / "counts.json").read_text())
+    SUMMARY.update({"raw_mb": counts["raw_mb"], "events": counts["events"],
+                    "first_start_date": props.start_date.min(), "last_start_date": props.start_date.max(),
+                    "fritsch_cutoff_date": counts["reference_dates"]["fritsch_cutoff"],
+                    "end_block_date": counts["end_block_date"],
+                    "outcome_state_mismatches": int((props.outcome.str.capitalize() != props.state_onchain).sum())})
     SUMMARY["proposals_total"] = len(props)
     SUMMARY["outcomes"] = props.outcome.value_counts().to_dict()
     SUMMARY["onchain_states"] = props.state_onchain.value_counts().to_dict()
@@ -104,7 +110,8 @@ def gap_analysis(ind, games, props):
             "max_abs_gap_banzhaf": (g.banzhaf - g.share).abs().max(),
             "max_abs_gap_shapley": (g.shapley - g.share).abs().max(),
         })
-    per = pd.DataFrame(per).merge(games, on="proposal_id")
+    per = pd.DataFrame(per).merge(games, on="proposal_id").merge(
+        props[["proposal_id", "snapshot_block", "start_date"]], on="proposal_id")
     per.to_csv(RES / "per_proposal_power.csv", index=False)
 
     # Per address, averaged over all analysed proposals (absent = 0).
@@ -120,6 +127,34 @@ def gap_analysis(ind, games, props):
                      agg.nsmallest(10, "gap_shapley").assign(kind="largest negative Shapley gap")])
     top.to_csv(RES / "gap_top.csv")
     agg.head(15).to_csv(RES / "top15_addresses.csv")
+
+    # Power per unit of token share, for addresses well above the rounding unit
+    # (the population of fig_gap_scatter.png): the two largest vs everyone else.
+    big = agg[agg.share >= 4 / CONFIG["power"]["resolution"]]
+    ratio = pd.DataFrame({"banzhaf_per_share": big.banzhaf / big.share,
+                          "shapley_per_share": big.shapley / big.share, "share": big.share})
+    ratio.to_csv(RES / "power_per_share.csv")
+    top2, rest = ratio.iloc[:2], ratio.iloc[2:]
+    SUMMARY.update({
+        "ratio_top2_min": float(top2[["banzhaf_per_share", "shapley_per_share"]].min().min()),
+        "ratio_top2_max": float(top2[["banzhaf_per_share", "shapley_per_share"]].max().max()),
+        "ratio_rest_median_banzhaf": float(rest.banzhaf_per_share.median()),
+        "ratio_rest_median_shapley": float(rest.shapley_per_share.median()),
+        "ratio_rest_below_one_share": float((rest.banzhaf_per_share < 1).mean()),
+        "ratio_rest_n": len(rest),
+    })
+
+    # From which proposal on does Banzhaf give the top delegate clearly more than
+    # Shapley-Shubik (by at least 0.5 percentage points in every later proposal)?
+    gap = per.sort_values("proposal_id").set_index("proposal_id")
+    gap = gap.top1_banzhaf - gap.top1_shapley
+    clear = gap >= 0.005
+    tail_ok = clear[::-1].cummin()[::-1]
+    first = int(tail_ok[tail_ok].index.min())
+    SUMMARY.update({"bz_over_ss_from_proposal": first,
+                    "bz_over_ss_from_date": str(props.set_index("proposal_id").start_date[first]),
+                    "bz_over_ss_min_gap_after": float(gap[gap.index >= first].min()),
+                    "bz_over_ss_max_gap_before": float(gap[gap.index < first].max())})
 
     s = per.spearman_banzhaf_shapley
     SUMMARY.update({
@@ -180,6 +215,7 @@ def pivotal_analysis(props):
             r[f"top{k}_flips"] = set_flips(players, F, A, Q, set(top[:k]))
         rows.append(r)
     df = pd.DataFrame(rows)
+    df = df.merge(props[["proposal_id", "snapshot_block", "start_date"]], on="proposal_id")
     df.to_csv(RES / "pivotal_per_proposal.csv", index=False)
     a = df[df.analysed]
     summ = pd.DataFrame({"k": TOPK, "share_of_decided_proposals_flippable_by_topk":
@@ -425,8 +461,19 @@ def write_tex_macros():
         "ResDiff": f"{max(S['resolution_sensitivity_max_diff_banzhaf'], S['resolution_sensitivity_max_diff_shapley']):.5f}",
         "TransMoved": pct(S["transitive_max_weight_moved_share"]),
         "DummyMax": pct(S["dummy_weight_share_max"]),
+        "RatioTopMin": f"{S['ratio_top2_min']:.2f}", "RatioTopMax": f"{S['ratio_top2_max']:.2f}",
+        "RatioRest": f"{S['ratio_rest_median_banzhaf']:.2f}", "RatioRestBelow": pct(S["ratio_rest_below_one_share"]),
+        "RatioRestN": S["ratio_rest_n"],
+        "BzOverSSFrom": S["bz_over_ss_from_proposal"], "BzOverSSDate": S["bz_over_ss_from_date"],
+        "BzOverSSMinGap": f"{100 * S['bz_over_ss_min_gap_after']:.1f}",
+        "NTransfers": f"{S['events']['Transfer'] / 1e6:.2f}M", "NDelegationEvents": f"{S['events']['DelegateChanged']:,}",
+        "RawMB": f"{S['raw_mb']:.0f}",
+        "FirstDate": S["first_start_date"], "LastDate": S["last_start_date"],
+        "FritschDate": S["fritsch_cutoff_date"], "EndDate": S["end_block_date"],
         "TopOneExceeds": pct(min(S["top1_banzhaf_exceeds_share_share"], S["top1_shapley_exceeds_share_share"])),
         "DelegMismatch": S["delegate_weight_mismatches"],
+        "StateMismatch": S["outcome_state_mismatches"],
+        "TallyDiff": f"{S['max_tally_diff_vs_onchain_COMP']:.0e}",
         "PartGames": S["part_games"], "PartNoWin": S["part_no_winning"], "PartQuorumBinds": S["part_quorum_binds"],
         "PartVoters": f"{S['part_voters_median']:.0f}",
         "PartTopOneShare": pct(S["part_top1_share_median"]), "PartTopOneBz": pct(S["part_top1_banzhaf_median"]),

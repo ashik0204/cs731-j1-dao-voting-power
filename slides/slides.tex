@@ -57,7 +57,7 @@
 \begin{frame}{What we did}
   \begin{enumerate}
     \item Rebuilt \textbf{every} Compound GovernorBravo proposal (\NProposals) and vote (\NVotes) from raw Ethereum logs.
-    \item Reconstructed each delegate's voting weight at each proposal's snapshot by \textbf{replaying all 2.33M COMP transfers and 16k delegation events}.
+    \item Reconstructed each delegate's voting weight at each proposal's snapshot by \textbf{replaying all \NTransfers{} COMP transfers and \NDelegationEvents{} delegation events}.
     \item Implemented delegation resolution, \textbf{Banzhaf} and \textbf{Shapley--Shubik} indices by dynamic programming ourselves (no index library).
     \item Compared token share against both indices, and the indices against what actually happened in each vote.
   \end{enumerate}
@@ -121,7 +121,7 @@
   \begin{tabular}{p{0.26\textwidth}p{0.66\textwidth}}
     \toprule
     \textbf{Stage} & \textbf{What it does}\\ \midrule
-    \texttt{data.fetch} & \texttt{eth\_getLogs} for 8 event types over blocks 9.6M--22.0M, adaptive range splitting, cached to \texttt{data/raw/} (175 MB)\\
+    \texttt{data.fetch} & \texttt{eth\_getLogs} for 8 event types over blocks 9.6M--22.0M (to \EndDate), adaptive range splitting, cached to \texttt{data/raw/} (\RawMB{} MB)\\
     \texttt{data.process} & ABI-decode; replay transfers + delegations in one pass over all snapshots; write CSVs\\
     \texttt{power/} & delegation resolver, Banzhaf DP, Shapley--Shubik DP, flip sets, gap metrics\\
     \texttt{analysis.run\_all} & all tables, figures, and the numbers on these slides\\ \bottomrule
@@ -129,7 +129,7 @@
   \end{center}
   \vspace{0.6em}
   \begin{itemize}
-    \item Scope: Compound GovernorBravo, proposals 43--393 (\NExecuted{} executed, \NDefeated{} defeated, \NCanceled{} canceled).
+    \item Scope: Compound GovernorBravo, proposals 43--393, voting opened \FirstDate{} to \LastDate{} (\NExecuted{} executed, \NDefeated{} defeated, \NCanceled{} canceled).
     \item Players: every address with positive voting weight at the snapshot (median \NPlayers{} per proposal).
     \item Quota: pass iff for $>$ against and for $\ge$ 400k COMP $\Rightarrow$ $q=\max(\lfloor W/2\rfloor+1,\;Q)$.
   \end{itemize}
@@ -144,8 +144,8 @@
     Check & Mismatches\\ \midrule
     Our delegate weights vs on-chain checkpoints (all delegates, \NProposals{} snapshots) & \textbf{\DelegMismatch}\\
     Our weight vs the weight of each of the \NVotes{} \texttt{VoteCast} events & \textbf{\VoteMismatch}\\
-    Our for/against/abstain tallies vs \texttt{proposals(id)} & \textbf{0}\\
-    Our outcome label vs \texttt{state(id)} & \textbf{0}\\ \bottomrule
+    Our for/against/abstain tallies vs \texttt{proposals(id)} (max difference, COMP) & \textbf{\TallyDiff}\\
+    Our outcome label vs \texttt{state(id)} & \textbf{\StateMismatch}\\ \bottomrule
   \end{tabular}
   \end{center}
   \vspace{0.8em}
@@ -220,8 +220,8 @@
   \begin{columns}[c]
   \begin{column}{0.34\textwidth}
     \begin{itemize}
-      \item The 1--2 largest delegates get $\approx 1.1\times$ power per unit of tokens.
-      \item Nearly everyone else is compressed to $\approx 0.96\times$.
+      \item The 2 largest delegates get \RatioTopMin--\RatioTopMax$\times$ power per unit of tokens.
+      \item The other \RatioRestN{} get a median \RatioRest$\times$; \RatioRestBelow{} of them are below 1.
       \item Largest single gap: $+\MaxGapBz$ points (Banzhaf), $+\MaxGapSS$ points (Shapley--Shubik), both for the top delegate.
     \end{itemize}
   \end{column}
@@ -231,20 +231,14 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Ten largest delegates}
-  \centering
-  \includegraphics[width=0.86\textwidth]{fig_top10_delegates.png}\\
-  \muted{\small Averaged over all proposals. Addresses are shown, not identities: one entity may control several.}
-\end{frame}
 
 \begin{frame}{Banzhaf vs Shapley--Shubik: same order, different sizes}
   \begin{columns}[c]
   \begin{column}{0.36\textwidth}
     \begin{itemize}
-      \item Spearman rank correlation is \SpearmanMin{} in \emph{every} proposal.
-      \item That is a theorem: in a weighted game, a heavier player is always at least as powerful under both indices.
-      \item The real difference is in magnitude: total-variation distance median \TVBzSS{} (max \TVBzSSmax).
-      \item Banzhaf favours the top delegate more after proposal $\sim$225.
+      \item Spearman rank correlation is \SpearmanMin{} in \emph{every} proposal: a theorem, since a heavier player is never less powerful under either index.
+      \item The real difference is in size: total-variation distance median \TVBzSS{} (max \TVBzSSmax).
+      \item From proposal \BzOverSSFrom{} (\BzOverSSDate) on, Banzhaf gives the top delegate $\ge$\BzOverSSMinGap{} points more.
     \end{itemize}
   \end{column}
   \begin{column}{0.62\textwidth}
@@ -316,8 +310,8 @@
   \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}cc}
     \toprule
     Source & Metric & Published & Ours\\ \midrule
-    Fritsch, M\"uller \& Wattenhofer (2022) & Nakamoto coefficient of delegates, block 14.3M & 8 & \textbf{\NakFritsch}\\[0.3em]
-    Fritsch, M\"uller \& Wattenhofer (2022) & Gini coefficient of delegates, block 14.3M & 0.987 & \textbf{\GiniFritsch}\\[0.3em]
+    Fritsch, M\"uller \& Wattenhofer (2022) & Nakamoto coefficient of delegates, block 14.3M (\FritschDate) & 8 & \textbf{\NakFritsch}\\[0.3em]
+    Fritsch, M\"uller \& Wattenhofer (2022) & Gini coefficient of delegates, block 14.3M (\FritschDate) & 0.987 & \textbf{\GiniFritsch}\\[0.3em]
     Messias et al.\ (2023) & mean voters needed for $\ge$50\% of votes cast & 3.18 & \textbf{\VotersHalf}\\ \bottomrule
   \end{tabular}
   \end{center}
@@ -326,6 +320,65 @@
     \item Ours: snapshot block \FritschBlock{}; \VotersHalfN{} decided Bravo proposals. Messias et al.\ also include Governor Alpha and data to Aug 2024.
     \item \textbf{What we add:} neither paper computes Banzhaf or Shapley--Shubik indices. Fritsch et al.\ use ``could one delegate flip this vote''; we compute both indices exactly over the delegation-resolved game, for every proposal.
   \end{itemize}
+\end{frame}
+
+
+\begin{frame}{Takeaways}
+  \begin{enumerate}
+    \item \textbf{Concentration is real, and slightly worse than token share suggests.} The top delegate's power exceeds its share under both indices in \TopOneExceeds{} of proposals; the median Nakamoto coefficient falls from \NakShare{} (weight) to \NakSS{} (Shapley--Shubik).
+    \item \textbf{The two indices agree on who matters} (by theorem) and differ by only $\sim$\TVBzSS{} in total variation, but Banzhaf amplifies the top delegate more.
+    \item \textbf{Among actual voters it is starker:} quorum binds in \PartQuorumBinds{} of \PartGames{} proposals and \PartNakSS{} voters hold most of the power.
+    \item \textbf{Realised outcomes are fragile.} The top 5 delegates could have reversed \TopkFive{} of all decided proposals; a single address, \FlipOne{} of \NDecided.
+  \end{enumerate}
+\end{frame}
+
+% =================================================================== 5. Limitations
+\section{Limitations}
+\begin{frame}{Limitations}
+  \begin{itemize}
+    \item \textbf{Snapshot choice:} weights at \texttt{startBlock}, exactly as the protocol counts; delegation can change during voting but cannot affect votes.
+    \item \textbf{Delegation rule:} one-hop, as in COMP. A transitive reading moves at most \TransMoved{} of weight in any proposal.
+    \item \textbf{Addresses $\ne$ people:} one entity may control many addresses, which would make concentration \emph{higher}. Fritsch et al.\ cluster addresses by transfers but call it ``not bullet-proof''; we do not cluster.
+    \item \textbf{Model assumptions:} the index game assumes all players vote and are not strategic (no coordination). Real turnout is \Turnout; the participation game (slide on actual voters) relaxes the all-vote assumption.
+    \item \textbf{Rounding:} integer weights at $W/20000$; effect $\le$ \ResDiff{} on any index.
+    \item \textbf{Scope:} one DAO and one governor contract (GovernorBravo, \FirstDate{} to \LastDate). Fritsch et al.'s data stop at \FritschDate.
+  \end{itemize}
+\end{frame}
+
+% =================================================================== 6. Future
+\section{Future directions}
+\begin{frame}{Future directions}
+  \begin{itemize}
+    \item \textbf{Turnout models:} between our two games, weight players by their historical participation.
+    \item \textbf{Entity clustering:} merge addresses controlled by the same organisation.
+    \item \textbf{Second DAO:} Uniswap uses the same token/governor design, so the pipeline transfers with a config change.
+    \item \textbf{Off-chain voting} (Snapshot) and liquid-delegation designs where chains really are transitive.
+    \item \textbf{Mechanism design:} how quorum or vote caps would change the indices.
+  \end{itemize}
+  \vspace{1em}
+  \muted{\small References: Fritsch, M\"uller \& Wattenhofer, \emph{Analyzing Voting Power in Decentralized Governance: Who controls DAOs?}, Blockchain: Research and Applications 5(3), 2024, doi:10.1016/j.bcra.2024.100208 (arXiv:2204.01176).\\
+  Messias et al., \emph{Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts}, arXiv:2305.17655.}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \vspace{2em}
+  {\Huge\bfseries Thank you}\\[1.5em]
+  \muted{Questions?}\\[2em]
+  \small Code, data pipeline and all results: \texttt{README.md} section 10 reproduces every number.
+\end{frame}
+
+
+% =================================================================== Backup (for questions)
+\appendix
+\begin{frame}
+  \centering\vspace{3em}{\LARGE\bfseries Backup slides}\\[1em]\muted{For questions}
+\end{frame}
+
+\begin{frame}{Ten largest delegates}
+  \centering
+  \includegraphics[width=0.86\textwidth]{fig_top10_delegates.png}\\
+  \muted{\small Averaged over all proposals. Addresses are shown, not identities: one entity may control several.}
 \end{frame}
 
 \begin{frame}{Their power measure vs our indices}
@@ -350,51 +403,6 @@
     \end{itemize}
   \end{column}
   \end{columns}
-\end{frame}
-
-\begin{frame}{Takeaways}
-  \begin{enumerate}
-    \item \textbf{Concentration is real, and slightly worse than token share suggests.} The top delegate's power exceeds its share under both indices in \TopOneExceeds{} of proposals; the median Nakamoto coefficient falls from \NakShare{} (weight) to \NakSS{} (Shapley--Shubik).
-    \item \textbf{The two indices agree on who matters} (by theorem) and differ by only $\sim$\TVBzSS{} in total variation, but Banzhaf amplifies the top delegate more.
-    \item \textbf{Among actual voters it is starker:} quorum binds in \PartQuorumBinds{} of \PartGames{} proposals and \PartNakSS{} voters hold most of the power.
-    \item \textbf{Realised outcomes are fragile.} The top 5 delegates could have reversed \TopkFive{} of all decided proposals; a single address, \FlipOne{} of \NDecided.
-  \end{enumerate}
-\end{frame}
-
-% =================================================================== 5. Limitations
-\section{Limitations}
-\begin{frame}{Limitations}
-  \begin{itemize}
-    \item \textbf{Snapshot choice:} weights at \texttt{startBlock}, exactly as the protocol counts; delegation can change during voting but cannot affect votes.
-    \item \textbf{Delegation rule:} one-hop, as in COMP. A transitive reading moves at most \TransMoved{} of weight in any proposal.
-    \item \textbf{Addresses $\ne$ people:} one entity may control many addresses, which would make concentration \emph{higher}. Fritsch et al.\ cluster addresses by transfers but call it ``not bullet-proof''; we do not cluster.
-    \item \textbf{Model assumptions:} the index game assumes all players vote and are not strategic (no coordination). Real turnout is \Turnout; the participation game (slide on actual voters) relaxes the all-vote assumption.
-    \item \textbf{Rounding:} integer weights at $W/20000$; effect $\le$ \ResDiff{} on any index.
-    \item \textbf{Scope:} one DAO and one governor contract (GovernorBravo, 2021--2025).
-  \end{itemize}
-\end{frame}
-
-% =================================================================== 6. Future
-\section{Future directions}
-\begin{frame}{Future directions}
-  \begin{itemize}
-    \item \textbf{Turnout models:} between our two games, weight players by their historical participation.
-    \item \textbf{Entity clustering:} merge addresses controlled by the same organisation.
-    \item \textbf{Second DAO:} Uniswap uses the same token/governor design, so the pipeline transfers with a config change.
-    \item \textbf{Off-chain voting} (Snapshot) and liquid-delegation designs where chains really are transitive.
-    \item \textbf{Mechanism design:} how quorum or vote caps would change the indices.
-  \end{itemize}
-  \vspace{1em}
-  \muted{\small References: Fritsch, M\"uller \& Wattenhofer, \emph{Analyzing Voting Power in Decentralized Governance: Who controls DAOs?}, arXiv:2204.01176.\\
-  Messias et al., \emph{Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts}, arXiv:2305.17655.}
-\end{frame}
-
-\begin{frame}
-  \centering
-  \vspace{2em}
-  {\Huge\bfseries Thank you}\\[1.5em]
-  \muted{Questions?}\\[2em]
-  \small Code, data pipeline and all results: \texttt{README.md} section 10 reproduces every number.
 \end{frame}
 
 \end{document}

@@ -82,7 +82,7 @@ All tests run with one command and must pass before any result is reported.
 5. Limitations: snapshot choices, delegation cycles, missing data, model assumption that voters are not strategic.
 6. Future directions.
 
-Reference reading: Fritsch, Müller and Wattenhofer, "Analyzing Voting Power in Decentralized Governance: Who controls DAOs?" (arXiv [2204.01176](https://arxiv.org/abs/2204.01176)). Also Messias et al., "Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts" (arXiv [2305.17655](https://arxiv.org/abs/2305.17655)). *(The brief originally gave arXiv 2208.01636 and 2304.02625. Those IDs are unrelated papers, a privacy workshop report and an AI-writing-assistant study, so they are corrected here.)*
+Reference reading: Fritsch, Müller and Wattenhofer, "Analyzing Voting Power in Decentralized Governance: Who controls DAOs?", Blockchain: Research and Applications 5(3), 2024, doi:[10.1016/j.bcra.2024.100208](https://doi.org/10.1016/j.bcra.2024.100208) (arXiv [2204.01176](https://arxiv.org/abs/2204.01176)). Also Messias et al., "Understanding Blockchain Governance: Analyzing Decentralized Voting to Amend DeFi Smart Contracts" (arXiv [2305.17655](https://arxiv.org/abs/2305.17655)). *(The brief originally gave arXiv 2208.01636 and 2304.02625. Those IDs are unrelated papers, a privacy workshop report and an AI-writing-assistant study, so they are corrected here.)*
 
 ## 8. Repo layout
 
@@ -151,10 +151,10 @@ Each change below was made for the stated reason. Nothing else in sections 1–9
 
 ## 12. Results (all from `python -m analysis.run_all`; numbers in `results/summary.json`)
 
-- **Data:** 351 proposals (281 executed, 33 defeated, 37 canceled) and 14,396 votes. Reconstructed weights match the chain exactly (see `DATA_ISSUES.md`).
+- **Data:** 351 proposals, voting opened 2021-04-14 to 2025-01-30 (281 executed, 33 defeated, 37 canceled) and 14,396 votes. Reconstructed weights match the chain exactly (see `DATA_ISSUES.md`).
 - **Concentration:** the median largest delegate holds 13.1% of voting weight but 14.9% Banzhaf and 14.3% Shapley-Shubik power. The median top-5 hold 38.2% of weight, 39.6% Banzhaf and 40.6% Shapley-Shubik. The median Nakamoto coefficient (fewest players with more than half) is 10 by weight and 9 by Shapley-Shubik. Of 4,912 players, a median of 76 are non-dummies at our resolution.
-- **Nominal vs effective gap:** the one or two largest delegates are amplified (power/share about 1.1), and almost everyone else is compressed (about 0.96). The largest single gap is +4.8 points (Banzhaf) and +2.2 points (Shapley-Shubik) for the top delegate. Tables: `gap_top.csv`, `address_power.csv`. Figures: `fig_gap_scatter.png`, `fig_top10_delegates.png`.
-- **Banzhaf vs Shapley-Shubik:** identical rankings (Spearman 1.000, as the theory predicts). Their distributions differ by a total-variation distance of median 0.015 (max 0.026). Banzhaf gives the top delegate more than Shapley-Shubik does after proposal ~225 (`fig_distribution_distance.png`, `fig_top1_power.png`).
+- **Nominal vs effective gap:** the two largest delegates are amplified (power per unit of share 1.09–1.14), and the other 129 delegates above the rounding unit are compressed (median 0.97; 95.3% below 1) (`power_per_share.csv`). The largest single gap is +4.8 points (Banzhaf) and +2.2 points (Shapley-Shubik) for the top delegate. Tables: `gap_top.csv`, `address_power.csv`. Figures: `fig_gap_scatter.png`, `fig_top10_delegates.png`.
+- **Banzhaf vs Shapley-Shubik:** identical rankings (Spearman 1.000, as the theory predicts). Their distributions differ by a total-variation distance of median 0.015 (max 0.026). From proposal 224 (voting opened 2024-03-13) on, Banzhaf gives the top delegate at least 0.8 points more than Shapley-Shubik (`fig_distribution_distance.png`, `fig_top1_power.png`).
 - **Votes to outcomes:** of 314 decided proposals, a single address could have reversed 118 (median minimal flip set: 2 addresses; never more than 5). This includes 28 of 33 defeated proposals, mostly quorum failures that one large non-voting delegate could have rescued. The top 1/3/5/10 delegates could alone have reversed 26% / 73% / 97% / 100% of outcomes (`topk_pivotal.csv`, `fig_topk_pivotal.png`, `fig_min_flip_size.png`). Median turnout was 25.5% of delegated weight.
 - **Robustness:** integer resolution (max index change 0.00016 from 20000 to 50000) and transitive delegation (at most 5.3% of weight moves).
 
@@ -168,7 +168,7 @@ Each change below was made for the stated reason. Nothing else in sections 1–9
 
 | Source | Metric | Published (Compound) | Ours |
 |---|---|---|---|
-| Fritsch et al. (arXiv 2204.01176) | Nakamoto coefficient of delegates at block 14,300,000 | 8 | 8 (snapshot block 14,252,261) |
+| Fritsch et al. (arXiv 2204.01176) | Nakamoto coefficient of delegates at block 14,300,000 (2022-03-01, their data cutoff) | 8 | 8 (snapshot block 14,252,261) |
 | Fritsch et al. (arXiv 2204.01176) | Gini coefficient of delegates at block 14,300,000 | 0.987 | 0.986 |
 | Messias et al. (arXiv 2305.17655) | mean voters needed for ≥ 50% of votes cast | 3.18 | 3.55 (314 decided Bravo proposals) |
 

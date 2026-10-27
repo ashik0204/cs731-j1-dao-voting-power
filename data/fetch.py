@@ -7,7 +7,7 @@ under data/raw/calls_*.json. Rerunning reuses the cache (offline if complete).
 """
 import yaml
 
-from data.rpc import RPC, endpoints, cached_logs, cached_call
+from data.rpc import RPC, endpoints, cached_logs, cached_call, cached_block_times
 from data.abi import topic, selector, word
 
 CONFIG = yaml.safe_load(open("config.yaml"))
@@ -39,10 +39,14 @@ def fetch_calls(rpc, proposal_ids):
 
 
 def main():
-    rpc = RPC(endpoints())
+    rpc = RPC(endpoints(CONFIG["rpc_env_var"]))
     logs = fetch_logs(rpc)
     ids = sorted(int(l["data"][2:66], 16) for l in logs["ProposalCreated"])
     fetch_calls(rpc, ids)
+    # Dates for reporting: every proposal's start and end block, plus reference blocks.
+    blocks = [int(l["data"][2 + 64 * k:2 + 64 * (k + 1)], 16) for l in logs["ProposalCreated"] for k in (6, 7)]
+    blocks += list(CONFIG["reference_blocks"].values()) + [CONFIG["blocks"]["end"]]
+    cached_block_times(rpc, blocks)
     for k, v in logs.items():
         print(f"{k}: {len(v)} logs")
 
