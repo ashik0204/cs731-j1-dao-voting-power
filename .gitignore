@@ -12,3 +12,5 @@ slides/*.out
 slides/*.snm
 slides/*.toc
 texput.log
+slides/*.fdb_latexmk
+slides/*.fls
