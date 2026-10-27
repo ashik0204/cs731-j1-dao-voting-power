@@ -54,11 +54,35 @@
   \muted{Question: how far apart are nominal share and effective power in a real DAO, and how often did a handful of addresses decide outcomes?}
 \end{frame}
 
+\begin{frame}{Why it matters}
+  \small
+  Compound's on-chain votes decide its interest-rate and collateral parameters, which assets it lists, and payments from its treasury (contributor grants, security audits). Whoever holds decisive power controls all of that.
+  \vspace{0.6em}
+  \begin{itemize}
+    \item \textbf{Delegators:} see whose vote actually decides outcomes before handing over their tokens.
+    \item \textbf{Protocol designers:} test quorum, thresholds or vote caps on real data before changing the rules.
+    \item \textbf{Security:} a small flip set means few addresses to bribe, buy or compromise to capture a vote.
+    \item \textbf{Claims of decentralisation} (to users, investors, regulators) need a measure of power, not a count of holders.
+    \item \textbf{Other DAOs:} Uniswap and many others run forks of the same governor, so the method carries over.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Existing approaches and their limitations}
+  \small
+  \begin{itemize}
+    \item \textbf{Token-share metrics} (Gini, Nakamoto coefficient): measure who \emph{holds} votes, not who can \emph{decide}. A 50\% holder can have 60--67\% of the power, and unequal holders can have equal power.
+    \item \textbf{Fritsch, M\"uller \& Wattenhofer (2022):} Compound, Uniswap, ENS, data to March 2022 via The Graph. Their ``potential power'' asks whether one delegate's vote could flip the \emph{one vote that happened}, not across all coalitions. Address clustering is ``not bullet-proof''.
+    \item \textbf{Messias et al.\ (2023):} Compound and Uniswap to August 2024; concentration (10 voters hold 50.53\% of Compound's voting power) and voting costs. No power indices.
+  \end{itemize}
+  \vspace{0.5em}
+  \textbf{Gap:} nobody computes exact Banzhaf and Shapley--Shubik indices over the delegation-resolved weights, for every proposal, with the weights checked against the chain. That is what we built.
+\end{frame}
+
 \begin{frame}{What we did}
   \begin{enumerate}
     \item Rebuilt \textbf{every} Compound GovernorBravo proposal (\NProposals) and vote (\NVotes) from raw Ethereum logs.
     \item Reconstructed each delegate's voting weight at each proposal's snapshot by \textbf{replaying all \NTransfers{} COMP transfers and \NDelegationEvents{} delegation events}.
-    \item Implemented delegation resolution, \textbf{Banzhaf} and \textbf{Shapley--Shubik} indices by dynamic programming ourselves (no index library).
+    \item Implemented delegation resolution, \textbf{Banzhaf} and \textbf{Shapley--Shubik} indices by dynamic programming ourselves.
     \item Compared token share against both indices, and the indices against what actually happened in each vote.
   \end{enumerate}
   \vspace{0.8em}
@@ -149,7 +173,7 @@
   \end{tabular}
   \end{center}
   \vspace{0.8em}
-  \muted{This validates the delegation resolver and the snapshot rule (events in block $\le$ \texttt{startBlock}) end to end.}
+  \muted{This validates the delegation resolver and the snapshot rule (events in block $\le$ \texttt{startBlock}) end to end. The index code is checked by 280 tests, including against brute-force enumeration (backup slide).}
 \end{frame}
 
 \begin{frame}{Computing the indices: dynamic programming}
@@ -166,33 +190,6 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Tests (280, all passing)}
-  \begin{columns}[T]
-  \begin{column}{0.5\textwidth}
-  \textbf{Indices}
-  \begin{itemize}
-    \item known example $[51;50,30,20]$ to $10^{-9}$
-    \item dummy players get 0
-    \item equal weights $\Rightarrow$ equal indices
-    \item Shapley--Shubik sums to 1
-    \item DP $=$ brute force on 40 random games with $n\le 12$
-    \item DP $=$ permutation definition ($n\le 7$)
-  \end{itemize}
-  \end{column}
-  \begin{column}{0.5\textwidth}
-  \textbf{Delegation \& outcomes}
-  \begin{itemize}
-    \item chains, cycles, self-delegation, undelegation, re-delegation
-    \item same-block ordering by log index
-    \item snapshot unaffected by later events
-    \item one-pass replay $=$ direct recomputation
-    \item minimal flip set $=$ brute force on 200 random votes
-  \end{itemize}
-  \end{column}
-  \end{columns}
-  \vspace{1em}
-  \muted{\texttt{pytest} runs in about 2 seconds.}
-\end{frame}
 
 % =================================================================== 4. Results
 \section{Results}
@@ -404,6 +401,34 @@
     \end{itemize}
   \end{column}
   \end{columns}
+\end{frame}
+
+\begin{frame}{Tests (280, all passing)}
+  \begin{columns}[T]
+  \begin{column}{0.5\textwidth}
+  \textbf{Indices}
+  \begin{itemize}
+    \item known example $[51;50,30,20]$ to $10^{-9}$
+    \item dummy players get 0
+    \item equal weights $\Rightarrow$ equal indices
+    \item Shapley--Shubik sums to 1
+    \item DP $=$ brute force on 40 random games with $n\le 12$
+    \item DP $=$ permutation definition ($n\le 7$)
+  \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+  \textbf{Delegation \& outcomes}
+  \begin{itemize}
+    \item chains, cycles, self-delegation, undelegation, re-delegation
+    \item same-block ordering by log index
+    \item snapshot unaffected by later events
+    \item one-pass replay $=$ direct recomputation
+    \item minimal flip set $=$ brute force on 200 random votes
+  \end{itemize}
+  \end{column}
+  \end{columns}
+  \vspace{1em}
+  \muted{\texttt{pytest} runs in about 2 seconds.}
 \end{frame}
 
 \end{document}
