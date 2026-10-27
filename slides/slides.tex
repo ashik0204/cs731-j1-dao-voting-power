@@ -166,7 +166,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Tests (278, all passing)}
+\begin{frame}{Tests (280, all passing)}
   \begin{columns}[T]
   \begin{column}{0.5\textwidth}
   \textbf{Indices}
@@ -316,7 +316,8 @@
   \begin{tabular}{>{\raggedright\arraybackslash}p{0.27\textwidth}>{\raggedright\arraybackslash}p{0.33\textwidth}cc}
     \toprule
     Source & Metric & Published & Ours\\ \midrule
-    Fritsch, M\"uller \& Wattenhofer (2022) & Nakamoto coefficient of delegates, block 14.3M & 8 & \textbf{\NakFritsch}\\[0.4em]
+    Fritsch, M\"uller \& Wattenhofer (2022) & Nakamoto coefficient of delegates, block 14.3M & 8 & \textbf{\NakFritsch}\\[0.3em]
+    Fritsch, M\"uller \& Wattenhofer (2022) & Gini coefficient of delegates, block 14.3M & 0.987 & \textbf{\GiniFritsch}\\[0.3em]
     Messias et al.\ (2023) & mean voters needed for $\ge$50\% of votes cast & 3.18 & \textbf{\VotersHalf}\\ \bottomrule
   \end{tabular}
   \end{center}
@@ -325,6 +326,30 @@
     \item Ours: snapshot block \FritschBlock{}; \VotersHalfN{} decided Bravo proposals. Messias et al.\ also include Governor Alpha and data to Aug 2024.
     \item \textbf{What we add:} neither paper computes Banzhaf or Shapley--Shubik indices. Fritsch et al.\ use ``could one delegate flip this vote''; we compute both indices exactly over the delegation-resolved game, for every proposal.
   \end{itemize}
+\end{frame}
+
+\begin{frame}{Their power measure vs our indices}
+  \small
+  \textbf{Potential power} (Fritsch et al., Def.\ 4.1): could this voter, by switching its vote, have flipped the result? \textbf{Exercised power} (Def.\ 4.2): did removing its vote flip it?
+  \vspace{0.4em}
+  \begin{columns}[T]
+  \begin{column}{0.48\textwidth}
+    \textbf{On our data} (Compound rule, with quorum)
+    \begin{itemize}
+      \item Only \PotVoters{} of \PotVotersTotal{} voters \emph{ever} had potential power, in \PotProposals{} of \NDecided{} proposals.
+      \item One delegate could have flipped \PotTop{} of the \PotTopVoted{} proposals it voted on.
+      \item Sanity check: every such proposal also has a one-address flip set in our analysis (asserted in code).
+    \end{itemize}
+  \end{column}
+  \begin{column}{0.5\textwidth}
+    \textbf{Why we need full indices}
+    \begin{itemize}
+      \item Potential power checks a swing at \emph{one} coalition, the one that happened. Banzhaf averages swings over \emph{all} $2^{n-1}$ coalitions; Shapley--Shubik over all orderings.
+      \item It is 0 for most voters in most votes, so it cannot rank them; our indices can.
+      \item Yet they agree: potential-power rate vs our Shapley--Shubik, Spearman \PotSpearman{} over \PotActive{} voters with $\ge$5 votes.
+    \end{itemize}
+  \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Takeaways}
@@ -342,8 +367,8 @@
   \begin{itemize}
     \item \textbf{Snapshot choice:} weights at \texttt{startBlock}, exactly as the protocol counts; delegation can change during voting but cannot affect votes.
     \item \textbf{Delegation rule:} one-hop, as in COMP. A transitive reading moves at most \TransMoved{} of weight in any proposal.
-    \item \textbf{Addresses $\ne$ people:} one entity may control many addresses, which would make concentration \emph{higher}.
-    \item \textbf{Model assumptions:} the index game assumes all players vote and are not strategic (no abstention, no coordination). Real turnout is \Turnout.
+    \item \textbf{Addresses $\ne$ people:} one entity may control many addresses, which would make concentration \emph{higher}. Fritsch et al.\ cluster addresses by transfers but call it ``not bullet-proof''; we do not cluster.
+    \item \textbf{Model assumptions:} the index game assumes all players vote and are not strategic (no coordination). Real turnout is \Turnout; the participation game (slide on actual voters) relaxes the all-vote assumption.
     \item \textbf{Rounding:} integer weights at $W/20000$; effect $\le$ \ResDiff{} on any index.
     \item \textbf{Scope:} one DAO and one governor contract (GovernorBravo, 2021--2025).
   \end{itemize}

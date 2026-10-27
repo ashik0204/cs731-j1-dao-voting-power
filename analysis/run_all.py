@@ -17,7 +17,7 @@ import yaml
 from analysis.compute_indices import compute
 from power.gap import spearman, game_indices
 from power.pivotal import min_flip_set, set_flips, passed
-from analysis.beyond import participation_games, nakamoto, voters_to_half
+from analysis.beyond import participation_games, nakamoto, voters_to_half, gini, fritsch_power
 
 CONFIG = yaml.safe_load(open("config.yaml"))
 RES = Path("results")
@@ -260,7 +260,47 @@ def beyond_analysis(props, per):
          "their_value": "3.18 (Compound, to Aug 2024)",
          "our_value": round(float(v2h.mean()), 2), "our_scope": f"{len(v2h)} decided Bravo proposals"},
     ])
+    g_del = gini(wf.weight)
+    prior = pd.concat([prior, pd.DataFrame([
+        {"source": "Fritsch et al. 2204.01176", "metric": "Gini coefficient of delegates",
+         "their_value": "0.987 (Compound, block 14,300,000)", "our_value": round(g_del, 3),
+         "our_scope": f"snapshot block {int(snaps.snapshot_block.iloc[-1])} (proposal {pid})"}])])
     prior.to_csv(RES / "prior_work_comparison.csv", index=False)
+    SUMMARY["gini_delegates_at_fritsch_block"] = g_del
+
+    # Fritsch et al.'s potential / exercised power on our data.
+    fp = fritsch_power(props, votes, Q)
+    fp.to_csv(RES / "fritsch_power_per_vote.csv.gz", index=False)
+    # Sanity check: a voter with potential power is a one-address flip set, so
+    # every such proposal must have min_flip_size == 1 in pivotal_per_proposal.
+    piv = pd.read_csv(RES / "pivotal_per_proposal.csv").set_index("proposal_id")
+    with_pot = fp[fp.potential].proposal_id.unique()
+    assert (piv.loc[with_pot, "min_flip_size"] == 1).all(), "potential power disagrees with flip sets"
+    per_voter = fp.groupby("voter").agg(n_voted=("proposal_id", "size"), potential=("potential", "sum"),
+                                         exercised=("exercised", "sum"))
+    # Average participation-game Shapley-Shubik per voter (0 where it did not vote).
+    pss = ind.groupby("address").shapley.sum() / len(games)
+    per_voter["avg_participation_shapley"] = pss.reindex(per_voter.index).fillna(0)
+    per_voter = per_voter.sort_values("potential", ascending=False)
+    per_voter.to_csv(RES / "fritsch_power_per_voter.csv")
+    early = fp[fp.proposal_id.isin(props[props.snapshot_block <= 14_300_000].proposal_id)]
+    early_v = early.groupby("voter").agg(n_voted=("proposal_id", "size"), potential=("potential", "sum"))
+    top_early = early_v.sort_values(["potential", "n_voted"], ascending=False).iloc[0]
+    active = per_voter[per_voter.n_voted >= 5]
+    SUMMARY.update({
+        "fritsch_proposals_with_potential": int(len(with_pot)),
+        "fritsch_proposals_with_exercised": int(fp[fp.exercised].proposal_id.nunique()),
+        "fritsch_voters_with_potential": int((per_voter.potential > 0).sum()),
+        "fritsch_voters_total": len(per_voter),
+        "fritsch_top_voter_potential": int(per_voter.potential.iloc[0]),
+        "fritsch_top_voter_voted": int(per_voter.n_voted.iloc[0]),
+        "fritsch_top4_potential_share": float(per_voter.potential.head(4).sum() / per_voter.potential.sum()),
+        "fritsch_early_proposals": int(early.proposal_id.nunique()),
+        "fritsch_early_top_potential": int(top_early.potential), "fritsch_early_top_voted": int(top_early.n_voted),
+        "fritsch_spearman_potential_vs_shapley": spearman(active.potential / active.n_voted,
+                                                          active.avg_participation_shapley),
+        "fritsch_active_voters": len(active),
+    })
     SUMMARY.update({"fritsch_block_pid": pid, "fritsch_snapshot_block": int(snaps.snapshot_block.iloc[-1]),
                     "nakamoto_at_fritsch_block": nakamoto(wf.weight),
                     "voters_to_half_mean": float(v2h.mean()), "voters_to_half_median": float(v2h.median()),
@@ -393,7 +433,15 @@ def write_tex_macros():
         "PartTopOneSS": pct(S["part_top1_shapley_median"]), "PartNakSS": f"{S['part_nakamoto_shapley_median']:.0f}",
         "PartTopOneGreater": pct(S["part_top1_shapley_gt_all_share"]),
         "NakFritsch": S["nakamoto_at_fritsch_block"], "FritschBlock": f"{S['fritsch_snapshot_block']:,}",
-        "VotersHalf": f"{S['voters_to_half_mean']:.2f}", "VotersHalfN": S["voters_to_half_n"], "VoteMismatch": S["vote_weight_mismatches"],
+        "VotersHalf": f"{S['voters_to_half_mean']:.2f}",
+        "GiniFritsch": f"{S['gini_delegates_at_fritsch_block']:.3f}",
+        "PotProposals": S["fritsch_proposals_with_potential"], "ExProposals": S["fritsch_proposals_with_exercised"],
+        "PotVoters": S["fritsch_voters_with_potential"], "PotVotersTotal": f"{S['fritsch_voters_total']:,}",
+        "PotTopFour": pct(S["fritsch_top4_potential_share"]),
+        "PotTop": S["fritsch_top_voter_potential"], "PotTopVoted": S["fritsch_top_voter_voted"],
+        "PotEarlyN": S["fritsch_early_proposals"], "PotEarlyTop": S["fritsch_early_top_potential"],
+        "PotEarlyTopVoted": S["fritsch_early_top_voted"],
+        "PotSpearman": f"{S['fritsch_spearman_potential_vs_shapley']:.2f}", "PotActive": S["fritsch_active_voters"], "VotersHalfN": S["voters_to_half_n"], "VoteMismatch": S["vote_weight_mismatches"],
     }
     piv = pd.read_csv(RES / "pivotal_per_proposal.csv")
     d = piv[piv.analysed & (piv.outcome == "defeated")]

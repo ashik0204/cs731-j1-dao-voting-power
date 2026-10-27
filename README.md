@@ -119,7 +119,7 @@ Python 3.13. From a clean checkout:
 ```
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -r requirements.txt
-pytest                              # 278 tests, ~2 s; must pass before results are reported
+pytest                              # 280 tests, ~2 s; must pass before results are reported
 
 # optional: your own archive node. If unset, public archive endpoints are used.
 export RPC_URL=...                  # never committed
@@ -169,6 +169,11 @@ Each change below was made for the stated reason. Nothing else in sections 1–9
 | Source | Metric | Published (Compound) | Ours |
 |---|---|---|---|
 | Fritsch et al. (arXiv 2204.01176) | Nakamoto coefficient of delegates at block 14,300,000 | 8 | 8 (snapshot block 14,252,261) |
+| Fritsch et al. (arXiv 2204.01176) | Gini coefficient of delegates at block 14,300,000 | 0.987 | 0.986 |
 | Messias et al. (arXiv 2305.17655) | mean voters needed for ≥ 50% of votes cast | 3.18 | 3.55 (314 decided Bravo proposals) |
 
 Messias et al. also cover Governor Alpha and data to August 2024, and they report that almost all defeated Compound proposals failed on quorum, consistent with our flip-set result. Neither paper computes Banzhaf or Shapley-Shubik indices. Fritsch et al. use their own "potential/exercised power" (could a delegate's vote alone flip the result) and Gini/Nakamoto coefficients, and Messias et al. measure concentration and voting costs. Computing both indices exactly over the delegation-resolved game for every proposal is what this project adds.
+
+**Fritsch et al.'s potential and exercised power on our data** (`results/fritsch_power_per_voter.csv`). Potential power (their Def. 4.1): would switching this voter's vote have flipped the outcome? Exercised power (Def. 4.2): would removing it have? We use Compound's rule with quorum (they use the majority of votes cast). Only 34 of 2,338 voters ever had potential power, in 96 of 314 decided proposals. One delegate could have flipped 57 of the 84 proposals it voted on. **Sanity check:** every proposal where some voter had potential power also has a one-address flip set in our flip-set analysis; `run_all` asserts this. Potential power is a swing at the one realised coalition, so it is 0 for most voters and cannot rank them. Banzhaf and Shapley-Shubik average swings over all coalitions or orderings. The two still agree in direction: across the 552 voters with at least 5 votes, the potential-power rate has Spearman 0.70 with average participation-game Shapley-Shubik power.
+
+**Not adopted from Fritsch et al.:** The Graph as data source (the brief ranks an archive node first, and our logs match on-chain state exactly), and address clustering (they note it is "not bullet-proof"; we report per address and list this as a limitation).

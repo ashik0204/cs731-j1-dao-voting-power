@@ -55,3 +55,36 @@ def voters_to_half(votes):
         w = np.sort(v.votes.values)[::-1]
         out[pid] = int(np.searchsorted(np.cumsum(w), w.sum() / 2, side="left") + 1)
     return pd.Series(out, name="voters_to_half")
+
+
+def gini(weights):
+    """Gini coefficient G = sum_i (2i - n - 1) x_(i) / (n sum x), x sorted ascending."""
+    x = np.sort(np.asarray(weights, dtype=float))
+    n = len(x)
+    i = np.arange(1, n + 1)
+    return float(((2 * i - n - 1) * x).sum() / (n * x.sum()))
+
+
+def fritsch_power(props, votes, quorum):
+    """Fritsch et al. (arXiv:2204.01176, Defs. 4.1/4.2) per (proposal, voter).
+
+    potential: had this voter voted for the other side (for <-> against), would
+               the outcome have changed?  (a swing at the *realised* coalition)
+    exercised: had this voter not voted, would the outcome have changed?
+    The outcome uses Compound's rule: passes iff for > against and for >= quorum
+    (Fritsch et al. use the majority of votes cast only; we add the quorum the
+    protocol actually enforces). Abstainers can neither swing nor be removed
+    with effect on for/against, so only for/against voters are scored.
+    """
+    rows = []
+    for _, p in props[props.outcome != "canceled"].iterrows():
+        v = votes[(votes.proposal_id == p.proposal_id) & votes.support.isin([0, 1]) & (votes.votes > 0)]
+        F, A = v.loc[v.support == 1, "votes"].sum(), v.loc[v.support == 0, "votes"].sum()
+        won = F > A and F >= quorum
+        for voter, s, w in zip(v.voter, v.support, v.votes):
+            f_sw, a_sw = (F - w, A + w) if s == 1 else (F + w, A - w)
+            f_rm, a_rm = (F - w, A) if s == 1 else (F, A - w)
+            rows.append({"proposal_id": p.proposal_id, "voter": voter, "votes": w, "support": s,
+                         "potential": (f_sw > a_sw and f_sw >= quorum) != won,
+                         "exercised": (f_rm > a_rm and f_rm >= quorum) != won})
+    return pd.DataFrame(rows)
