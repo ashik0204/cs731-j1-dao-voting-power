@@ -303,6 +303,7 @@
 \end{frame}
 
 \begin{frame}{Agreement with prior work}
+  \small
   We recomputed the published Compound metrics on our own data.
   \vspace{0.8em}
   \begin{center}
@@ -317,7 +318,7 @@
   \end{center}
   \vspace{0.6em}
   \begin{itemize}
-    \item Ours: snapshot block \FritschBlock{}; \VotersHalfN{} decided Bravo proposals. Messias et al.\ also include Governor Alpha and data to Aug 2024.
+    \item \textbf{Different periods:} Fritsch et al.\ data to \FritschDate{} (we compare at our nearest snapshot, block \FritschBlock); Messias et al.\ to 2024-08-19, including Governor Alpha; ours \FirstDate{} to \LastDate{} (\VotersHalfN{} decided Bravo proposals).
     \item \textbf{What we add:} neither paper computes Banzhaf or Shapley--Shubik indices. Fritsch et al.\ use ``could one delegate flip this vote''; we compute both indices exactly over the delegation-resolved game, for every proposal.
   \end{itemize}
 \end{frame}
