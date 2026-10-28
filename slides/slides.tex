@@ -88,55 +88,6 @@
   \vspace{0.8em}
 \end{frame}
 
-% =================================================================== 2. Background
-\section{Background}
-\begin{frame}{Weighted voting games}
-  \begin{itemize}
-    \item Players $N=\{1,\dots,n\}$ with weights $w_i \ge 0$ and a quota $q$.
-    \item A coalition $S$ \textbf{wins} iff $w(S)=\sum_{i\in S} w_i \ge q$. Written $[q;\,w_1,\dots,w_n]$.
-    \item Player $i$ \textbf{swings} for $S \subseteq N\setminus\{i\}$ if $S$ loses but $S\cup\{i\}$ wins:
-      \[ q - w_i \;\le\; w(S) \;<\; q. \]
-  \end{itemize}
-  \vspace{0.5em}
-  \textbf{Example} $[51;\,50,30,20]$: winning coalitions $\{1,2\},\{1,3\},\{1,2,3\}$.\\
-  Player 1 holds 50\% of the weight but is in every winning coalition.
-\end{frame}
-
-\begin{frame}{Two power indices}
-  \small
-  \textbf{Banzhaf}: how often is $i$ a swing, over all coalitions of the others?
-  \[ \psi_i = \frac{\#\{S \subseteq N\setminus\{i\} : q-w_i \le w(S) < q\}}{2^{\,n-1}}, \qquad \beta_i = \frac{\psi_i}{\sum_j \psi_j}. \]
-  \textbf{Shapley--Shubik}: in a random ordering of players, how often is $i$ the one whose arrival first reaches $q$?
-  \[ \varphi_i = \sum_{\substack{S \subseteq N\setminus\{i\}\\ q-w_i \le w(S) < q}} \frac{|S|!\,(n-1-|S|)!}{n!}. \]
-  \begin{center}
-  \begin{tabular}{lccc}
-    \toprule
-    $[51;\,50,30,20]$ & player 1 & player 2 & player 3\\ \midrule
-    token share & 0.50 & 0.30 & 0.20\\
-    Banzhaf $\beta$ & 0.60 & 0.20 & 0.20\\
-    Shapley--Shubik $\varphi$ & 0.667 & 0.167 & 0.167\\ \bottomrule
-  \end{tabular}
-  \end{center}
-  \vspace{-0.4em}
-\end{frame}
-
-\begin{frame}{Delegation in COMP}
-  \begin{itemize}
-    \item A holder's tokens vote only if it \textbf{delegates}, to itself or to another address.
-    \item Delegation is \textbf{one-hop}: if $A\to B$ and $B\to C$, then $A$'s tokens count for $B$, and $B$'s own tokens for $C$.
-    \item Undelegating ($\to$ \texttt{0x0}) removes the votes; undelegated tokens count for nobody.
-    \item Voting weight at a proposal = $\sum$ balances delegated to you, at its \texttt{startBlock}.
-  \end{itemize}
-  \vspace{0.6em}
-  \textbf{Our resolver} implements this rule, plus a \emph{transitive} variant for sensitivity:
-  \begin{itemize}
-    \item follow $A\to B\to C\to\cdots$ to a self-delegated or non-delegating address;
-    \item \textbf{cycle rule:} addresses on a cycle are treated as self-delegated; a chain entering a cycle stops at the first cycle address.
-  \end{itemize}
-\end{frame}
-
-% =================================================================== 3. What is done
-\section{What is done}
 \begin{frame}{Pipeline}
   \small
   \begin{center}
@@ -174,6 +125,53 @@
   \vspace{0.8em}
   \muted{This validates the delegation resolver and the snapshot rule (events in block $\le$ \texttt{startBlock}) end to end. The index code is checked by 280 tests, including against brute-force enumeration (backup slide).}
 \end{frame}
+
+\begin{frame}{Delegation in COMP}
+  \begin{itemize}
+    \item A holder's tokens vote only if it \textbf{delegates}, to itself or to another address.
+    \item Delegation is \textbf{one-hop}: if $A\to B$ and $B\to C$, then $A$'s tokens count for $B$, and $B$'s own tokens for $C$.
+    \item Undelegating ($\to$ \texttt{0x0}) removes the votes; undelegated tokens count for nobody.
+    \item Voting weight at a proposal = $\sum$ balances delegated to you, at its \texttt{startBlock}.
+  \end{itemize}
+  \vspace{0.6em}
+\end{frame}
+
+% =================================================================== 2. Background
+\section{Background}
+\begin{frame}{Weighted voting games}
+  \begin{itemize}
+    \item Players $N=\{1,\dots,n\}$ with weights $w_i \ge 0$ and a quota $q$.
+    \item A coalition $S$ \textbf{wins} iff $w(S)=\sum_{i\in S} w_i \ge q$. Written $[q;\,w_1,\dots,w_n]$.
+    \item Player $i$ \textbf{swings} for $S \subseteq N\setminus\{i\}$ if $S$ loses but $S\cup\{i\}$ wins:
+      \[ q - w_i \;\le\; w(S) \;<\; q. \]
+  \end{itemize}
+  \vspace{0.5em}
+  \textbf{Example} $[51;\,50,30,20]$: winning coalitions $\{1,2\},\{1,3\},\{1,2,3\}$.\\
+  Player 1 holds 50\% of the weight but is in every winning coalition.
+\end{frame}
+
+\begin{frame}{Two power indices}
+  \small
+  \textbf{Banzhaf}: how often is $i$ a swing, over all coalitions of the others?
+  \[ \psi_i = \frac{\#\{S \subseteq N\setminus\{i\} : q-w_i \le w(S) < q\}}{2^{\,n-1}}, \qquad \beta_i = \frac{\psi_i}{\sum_j \psi_j}. \]
+  \textbf{Shapley--Shubik}: in a random ordering of players, how often is $i$ the one whose arrival first reaches $q$?
+  \[ \varphi_i = \sum_{\substack{S \subseteq N\setminus\{i\}\\ q-w_i \le w(S) < q}} \frac{|S|!\,(n-1-|S|)!}{n!}. \]
+  \begin{center}
+  \begin{tabular}{lccc}
+    \toprule
+    $[51;\,50,30,20]$ & player 1 & player 2 & player 3\\ \midrule
+    token share & 0.50 & 0.30 & 0.20\\
+    Banzhaf $\beta$ & 0.60 & 0.20 & 0.20\\
+    Shapley--Shubik $\varphi$ & 0.667 & 0.167 & 0.167\\ \bottomrule
+  \end{tabular}
+  \end{center}
+  \vspace{-0.4em}
+\end{frame}
+
+
+% =================================================================== 3. What is done
+\section{What is done}
+
 
 \begin{frame}{Computing the indices: dynamic programming}
   \small
